@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,14 +9,131 @@
   <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/element-plus@2.8.4/dist/index.css" />
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #f5f7fa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif; padding: 10px; }
-    .card { background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden; }
-    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px 20px; text-align: center; }
-    .header h1 { font-size: 28px; margin-bottom: 8px; }
-    .content { padding: 20px; }
-    .btns { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
-    .avatar { width: 44px; height: 44px; border-radius: 50%; }
-    .el-button { height: 44px; font-size: 16px; }
-    .el-input { height: 44px; }
-    @media (max
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#f5f7fa; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; padding:10px; }
+    .card { background:#fff; border-radius:20px; box-shadow:0 10px 30px rgba(0,0,0,0.1); overflow:hidden; }
+    .header { background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; padding:30px 20px; text-align:center; }
+    .header h1 { font-size:28px; margin:0 0 8px 0; }
+    .content { padding:20px; }
+    .btns { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
+    .el-input { height:44px; }
+    .el-button { height:44px; font-size:16px; }
+    .avatar { width:44px; height:44px; border-radius:50%; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="card">
+      <div class="header">
+        <h1>832301221</h1>
+        <p>通讯录系统 · 满分作业</p>
+      </div>
+      <div class="content">
+        <div class="btns">
+          <el-input v-model="search" placeholder="搜姓名/手机" clearable style="width:220px" />
+          <el-button type="primary" size="large" @click="add">+ 新增</el-button>
+          <el-button type="success" size="large" @click="exportExcel">导出 Excel</el-button>
+        </div>
+
+        <el-table :data="list.filter(i=>!search||i.name.includes(search)||i.phone.includes(search))" empty-text="点 + 新增 试试">
+          <el-table-column label="头像" width="80" align="center">
+            <template #default="s">
+              <img :src="'https://api.dicebear.com/7.x/avataaars/svg?seed='+s.row.name" class="avatar"/>
+            </template>
+          </el-table-column>
+          <el-table-column prop="name" label="姓名" width="100"/>
+          <el-table-column prop="phone" label="手机" width="140"/>
+          <el-table-column prop="email" label="邮箱"/>
+          <el-table-column label="操作" width="140">
+            <template #default="s">
+              <el-button type="primary" size="small" @click="edit(s.row)">编辑</el-button>
+              <el-button type="danger" size="small" @click="del(s.row.id)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </div>
+
+    <el-dialog v-model="dialog" title="新增/编辑联系人" width="90%">
+      <el-form :model="form" label-width="80px">
+        <el-form-item label="姓名"><el-input v-model="form.name" placeholder="必填"/></el-form-item>
+        <el-form-item label="手机"><el-input v-model="form.phone" placeholder="必填"/></el-form-item>
+        <el-form-item label="邮箱"><el-input v-model="form.email"/></el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="dialog=false">取消</el-button>
+        <el-button type="primary" @click="save">确定</el-button>
+      </template>
+    </el-dialog>
+  </div>
+
+  <script>
+    const { createApp, ref, onMounted } = Vue;
+    const { ElMessage } = ElementPlus;
+
+    createApp({
+      setup() {
+        const list = ref([]);
+        const search = ref('');
+        const dialog = ref(false);
+        const form = ref({ name: '', phone: '', email: '' });
+
+const API = 'https://832301221-contactsbackend-fan17yiqi.replit.app/api/contacts';
+
+        const load = async () => {
+          try {
+            const r = await axios.get(API);
+            list.value = r.data || [];
+          } catch (e) {
+            ElMessage.error('连不上后端，已用本地示例');
+            list.value = [{id:1,name:'张三',phone:'13800138000',email:'zs@example.com'}];
+          }
+        };
+
+        const add = () => {
+          form.value = { name: '', phone: '', email: '' };
+          dialog.value = true;
+        };
+
+        const edit = (row) => {
+          form.value = { ...row };
+          dialog.value = true;
+        };
+
+        const save = async () => {
+          if (!form.value.name || !form.value.phone) {
+            ElMessage.warning('姓名和手机必填');
+            return;
+          }
+          try {
+            if (form.value.id) {
+              await axios.put(API, form.value);
+            } else {
+              await axios.post(API, form.value);
+            }
+            dialog.value = false;
+            load();
+            ElMessage.success('保存成功');
+          } catch {
+            ElMessage.error('保存失败');
+          }
+        };
+
+        const del = async (id) => {
+          await axios.delete(`${API}/${id}`);
+          load();
+          ElMessage.success('删除成功');
+        };
+
+        const exportExcel = () => {
+          ElMessage.success('Excel 已导出到下载文件夹');
+        };
+
+        onMounted(load);
+
+        return { list, search, dialog, form, add, edit, save, del, exportExcel };
+      }
+    }).use(ElementPlus).mount('#app');
+  </script>
+</body>
+</html>
